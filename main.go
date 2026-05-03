@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hashmap-kz/godedup/internal/wrapx"
-
 	"github.com/hashmap-kz/godedup/internal/load"
 	"github.com/hashmap-kz/godedup/internal/report"
+	"github.com/hashmap-kz/godedup/internal/wrapx"
 )
 
 var Version = "dev"
@@ -26,7 +25,8 @@ Examples:
   godedup ./...
   godedup --min-similarity 0.90 ./pkg/...
   godedup --exact ./...
-  godedup --json ./... | jq .
+  godedup --output table --no-tests ./...
+  godedup --output json ./... | jq .
 
 Flags:
 `
@@ -36,8 +36,7 @@ func main() {
 	minStmts := flag.Int("min-stmts", 3, "minimum statements in a function to analyze")
 	exactOnly := flag.Bool("exact", false, "report only exact structural clones")
 	noTests := flag.Bool("no-tests", false, "exclude test files")
-	jsonOut := flag.Bool("json", false, "output JSON instead of human-readable text")
-	tableOut := flag.Bool("table", false, "output aligned table")
+	output := flag.String("output", "text", "output format: text, table, json")
 	showVer := flag.Bool("version", false, "print version and exit")
 
 	flag.Usage = func() {
@@ -52,12 +51,19 @@ func main() {
 		os.Exit(0)
 	}
 
+	switch *output {
+	case "text", "table", "json":
+		// valid
+	default:
+		wrapx.Fprintf(os.Stderr, "godedup: unknown output format %q (want: text, table, json)\n", *output)
+		os.Exit(1)
+	}
+
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
 	}
 
-	// expand ./... pattern
 	paths = expandPaths(paths)
 
 	result, err := load.Load(paths, *noTests)
@@ -85,16 +91,15 @@ func main() {
 		os.Exit(2)
 	}
 
-	switch {
-	case *jsonOut:
+	switch *output {
+	case "json":
 		report.PrintJSON(os.Stdout, clones)
-	case *tableOut:
+	case "table":
 		report.PrintTable(os.Stdout, clones, cwd)
 	default:
 		report.Print(os.Stdout, clones, cwd)
 	}
 
-	// exit 1 if clones found (useful for CI)
 	if len(clones) > 0 {
 		os.Exit(1)
 	}

@@ -22,7 +22,7 @@ godedup ./...
 ```
 
 ```
-$ godedup --table --no-tests
+$ godedup --output=table --no-tests
  
 GROUP  TYPE   SIM   FUNCTION                     LOCATION                     STMTS  LINES
 ------------------------------------------------------------------------------------------
@@ -78,8 +78,7 @@ Flags:
   --min-stmts       int    minimum statements to analyze (default: 3)
   --exact                  report only exact structural clones
   --no-tests               exclude test files
-  --json                   machine-readable JSON output
-  --table                  output aligned table
+  --output string          output format: text, table, json
   --version                print version
 ```
 
@@ -93,7 +92,7 @@ Flags:
 **JSON output** for custom tooling:
 
 ```bash
-godedup --json ./... | jq '.[] | select(.exact) | .functions[].name'
+godedup --output=json ./... | jq '.[] | select(.exact) | .functions[].name'
 ```
 
 ---
