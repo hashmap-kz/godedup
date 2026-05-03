@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"godedup/internal/wrapx"
+	"github.com/hashmap-kz/godedup/internal/wrapx"
 
-	"godedup/internal/load"
-	"godedup/internal/report"
+	"github.com/hashmap-kz/godedup/internal/load"
+	"github.com/hashmap-kz/godedup/internal/report"
 )
 
 var Version = "dev"

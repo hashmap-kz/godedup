@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"godedup/internal/hash"
+	"github.com/hashmap-kz/godedup/internal/hash"
 )
 
 // Result holds all analyzed functions from the given paths.

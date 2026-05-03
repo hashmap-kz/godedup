@@ -11,7 +11,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	"godedup/internal/wrapx"
+	"github.com/hashmap-kz/godedup/internal/wrapx"
 )
 
 // FuncInfo holds the hashing result for a single function.

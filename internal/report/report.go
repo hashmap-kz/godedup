@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"godedup/internal/wrapx"
+	"github.com/hashmap-kz/godedup/internal/wrapx"
 
-	"godedup/internal/hash"
+	"github.com/hashmap-kz/godedup/internal/hash"
 )
 
 // Clone represents a group of structurally identical or similar functions.
