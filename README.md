@@ -74,12 +74,12 @@ brew install godedup
 godedup [flags] [path ...]
 
 Flags:
-  --min-similarity  float  minimum similarity threshold (default: 0.85)
-  --min-stmts       int    minimum statements to analyze (default: 3)
-  --exact                  report only exact structural clones
-  --no-tests               exclude test files
-  --output string          output format: text, table, json
-  --version                print version
+  --min-similarity  float    minimum similarity threshold (default: 0.85)
+  --min-stmts       int      minimum statements to analyze (default: 3)
+  --exact                    report only exact structural clones
+  --no-tests                 exclude test files
+  --output          string   output format: text, table, json (default: text)
+  --version                  print version
 ```
 
 **CI integration** - exits with code 1 if any clones found:
