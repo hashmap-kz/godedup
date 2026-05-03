@@ -11,7 +11,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	"github.com/hashmap-kz/godedup/internal/wrapx"
+	"github.com/hashmap-kz/godedup/internal/x/convx"
 )
 
 // FuncInfo holds the hashing result for a single function.
@@ -139,7 +139,7 @@ func (h *Hasher) hashNode(node ast.Node) uint64 {
 
 	case *ast.AssignStmt:
 		return combine(nodeID("AssignStmt"),
-			wrapx.ToUint64(n.Tok), // = vs :=
+			convx.ToUint64(n.Tok), // = vs :=
 			h.hashExprList(n.Lhs),
 			h.hashExprList(n.Rhs),
 		)
@@ -155,7 +155,7 @@ func (h *Hasher) hashNode(node ast.Node) uint64 {
 		for _, s := range n.Specs {
 			specs = append(specs, h.hashNode(s))
 		}
-		return combine(nodeID("GenDecl"), wrapx.ToUint64(n.Tok), hashUint64Slice(specs))
+		return combine(nodeID("GenDecl"), convx.ToUint64(n.Tok), hashUint64Slice(specs))
 
 	case *ast.ValueSpec:
 		return combine(nodeID("ValueSpec"),
@@ -164,7 +164,7 @@ func (h *Hasher) hashNode(node ast.Node) uint64 {
 		)
 
 	case *ast.IncDecStmt:
-		return combine(nodeID("IncDecStmt"), wrapx.ToUint64(n.Tok), h.hashNode(n.X))
+		return combine(nodeID("IncDecStmt"), convx.ToUint64(n.Tok), h.hashNode(n.X))
 
 	case *ast.SendStmt:
 		return combine(nodeID("SendStmt"),
@@ -179,7 +179,7 @@ func (h *Hasher) hashNode(node ast.Node) uint64 {
 		return combine(nodeID("DeferStmt"), h.hashNode(n.Call))
 
 	case *ast.BranchStmt:
-		return combine(nodeID("BranchStmt"), wrapx.ToUint64(n.Tok))
+		return combine(nodeID("BranchStmt"), convx.ToUint64(n.Tok))
 
 	case *ast.LabeledStmt:
 		// normalize away label name
@@ -202,17 +202,17 @@ func (h *Hasher) hashNode(node ast.Node) uint64 {
 
 	case *ast.BasicLit:
 		// normalize: all literals of the same kind hash the same
-		return combine(nodeID("BasicLit"), wrapx.ToUint64(n.Kind))
+		return combine(nodeID("BasicLit"), convx.ToUint64(n.Kind))
 
 	case *ast.BinaryExpr:
 		return combine(nodeID("BinaryExpr"),
-			wrapx.ToUint64(n.Op),
+			convx.ToUint64(n.Op),
 			h.hashNode(n.X),
 			h.hashNode(n.Y),
 		)
 
 	case *ast.UnaryExpr:
-		return combine(nodeID("UnaryExpr"), wrapx.ToUint64(n.Op), h.hashNode(n.X))
+		return combine(nodeID("UnaryExpr"), convx.ToUint64(n.Op), h.hashNode(n.X))
 
 	case *ast.CallExpr:
 		return combine(nodeID("CallExpr"),
@@ -277,7 +277,7 @@ func (h *Hasher) hashNode(node ast.Node) uint64 {
 		)
 
 	case *ast.ChanType:
-		return combine(nodeID("ChanType"), wrapx.ToUint64(n.Dir), h.hashNode(n.Value))
+		return combine(nodeID("ChanType"), convx.ToUint64(n.Dir), h.hashNode(n.Value))
 
 	case *ast.InterfaceType:
 		return nodeID("InterfaceType")

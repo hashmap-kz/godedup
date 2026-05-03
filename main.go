@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hashmap-kz/godedup/internal/x/fmtx"
+
 	"github.com/hashmap-kz/godedup/internal/load"
 	"github.com/hashmap-kz/godedup/internal/report"
-	"github.com/hashmap-kz/godedup/internal/wrapx"
 )
 
 var Version = "dev"
@@ -40,9 +41,9 @@ func main() {
 	showVer := flag.Bool("version", false, "print version and exit")
 
 	flag.Usage = func() {
-		wrapx.Fprint(os.Stderr, usage)
+		fmtx.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
-		wrapx.Fprintln(os.Stderr)
+		fmtx.Fprintln(os.Stderr)
 	}
 	flag.Parse()
 
@@ -55,7 +56,7 @@ func main() {
 	case "text", "table", "json":
 		// valid
 	default:
-		wrapx.Fprintf(os.Stderr, "godedup: unknown output format %q (want: text, table, json)\n", *output)
+		fmtx.Fprintf(os.Stderr, "godedup: unknown output format %q (want: text, table, json)\n", *output)
 		os.Exit(1)
 	}
 
@@ -68,12 +69,12 @@ func main() {
 
 	result, err := load.Load(paths, *noTests)
 	if err != nil {
-		wrapx.Fprintf(os.Stderr, "godedup: load error: %v\n", err)
+		fmtx.Fprintf(os.Stderr, "godedup: load error: %v\n", err)
 		os.Exit(1)
 	}
 
 	if len(result.Funcs) == 0 {
-		wrapx.Fprintln(os.Stderr, "godedup: no functions found")
+		fmtx.Fprintln(os.Stderr, "godedup: no functions found")
 		os.Exit(0)
 	}
 

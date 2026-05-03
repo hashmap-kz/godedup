@@ -1,6 +1,5 @@
 APP_NAME 	 := godedup
 OUTPUT   	 := $(APP_NAME)
-COV_REPORT 	 := coverage.txt
 INSTALL_DIR  := /usr/local/bin
 
 ifeq ($(OS),Windows_NT)
