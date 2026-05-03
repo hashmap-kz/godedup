@@ -61,6 +61,11 @@ calls hash identically.
 go install github.com/hashmap-kz/godedup@latest
 ```
 
+```bash
+brew tap hashmap-kz/homebrew-tap
+brew install godedup
+```
+
 ---
 
 ## Usage
