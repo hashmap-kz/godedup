@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashmap-kz/godedup/internal/wrapx"
+	"github.com/hashmap-kz/godedup/internal/x/fmtx"
 
 	"github.com/hashmap-kz/godedup/internal/hash"
 )
@@ -175,7 +175,7 @@ func sortClones(clones []Clone) {
 // Print writes a human-readable report to w.
 func Print(w io.Writer, clones []Clone, cwd string) {
 	if len(clones) == 0 {
-		wrapx.Fprintln(w, "godedup: no structural duplicates found")
+		fmtx.Fprintln(w, "godedup: no structural duplicates found")
 		return
 	}
 
@@ -189,7 +189,7 @@ func Print(w io.Writer, clones []Clone, cwd string) {
 		}
 	}
 
-	wrapx.Fprintf(w, "godedup: found %d clone group(s) (%d exact, %d near)\n\n",
+	fmtx.Fprintf(w, "godedup: found %d clone group(s) (%d exact, %d near)\n\n",
 		len(clones), exact, near)
 
 	for i, clone := range clones {
@@ -200,7 +200,7 @@ func Print(w io.Writer, clones []Clone, cwd string) {
 			simStr = fmt.Sprintf("%.0f%%", clone.Similarity*100)
 		}
 
-		wrapx.Fprintf(w, "=== clone group %d [%s %s similarity] ===\n",
+		fmtx.Fprintf(w, "=== clone group %d [%s %s similarity] ===\n",
 			i+1, kind, simStr)
 
 		// sort functions by file+line for stable output
@@ -215,38 +215,38 @@ func Print(w io.Writer, clones []Clone, cwd string) {
 
 		for _, f := range sorted {
 			relPath := relativePath(f.File, cwd)
-			wrapx.Fprintf(w, "  %s\n", f.Name)
-			wrapx.Fprintf(w, "    %s:%d  (%d stmts, %d lines)\n",
+			fmtx.Fprintf(w, "  %s\n", f.Name)
+			fmtx.Fprintf(w, "    %s:%d  (%d stmts, %d lines)\n",
 				relPath, f.Line, f.NumStmts, f.NumLines)
 		}
-		wrapx.Fprintln(w)
+		fmtx.Fprintln(w)
 	}
 
-	wrapx.Fprintf(w, "suggestion: extract shared logic into a common function\n")
-	wrapx.Fprintf(w, "            or use generics if types differ\n")
+	fmtx.Fprintf(w, "suggestion: extract shared logic into a common function\n")
+	fmtx.Fprintf(w, "            or use generics if types differ\n")
 }
 
 // PrintJSON writes machine-readable JSON output.
 func PrintJSON(w io.Writer, clones []Clone) {
-	wrapx.Fprintln(w, "[")
+	fmtx.Fprintln(w, "[")
 	for i, clone := range clones {
-		wrapx.Fprintf(w, `  {"exact":%v,"similarity":%.2f,"functions":[`,
+		fmtx.Fprintf(w, `  {"exact":%v,"similarity":%.2f,"functions":[`,
 			clone.Exact, clone.Similarity)
 		for j, f := range clone.Funcs {
 			if j > 0 {
-				wrapx.Fprint(w, ",")
+				fmtx.Fprint(w, ",")
 			}
-			wrapx.Fprintf(w, `{"name":%q,"file":%q,"line":%d,"stmts":%d}`,
+			fmtx.Fprintf(w, `{"name":%q,"file":%q,"line":%d,"stmts":%d}`,
 				f.Name, f.File, f.Line, f.NumStmts)
 		}
-		wrapx.Fprint(w, "]}")
+		fmtx.Fprint(w, "]}")
 		if i < len(clones)-1 {
-			wrapx.Fprintln(w, ",")
+			fmtx.Fprintln(w, ",")
 		} else {
-			wrapx.Fprintln(w)
+			fmtx.Fprintln(w)
 		}
 	}
-	wrapx.Fprintln(w, "]")
+	fmtx.Fprintln(w, "]")
 }
 
 func relativePath(path, cwd string) string {
@@ -264,7 +264,7 @@ func relativePath(path, cwd string) string {
 // Columns: GROUP  TYPE   SIM   FUNCTION  LOCATION  STMTS  LINES
 func PrintTable(w io.Writer, clones []Clone, cwd string) {
 	if len(clones) == 0 {
-		wrapx.Fprintln(w, "godedup: no structural duplicates found")
+		fmtx.Fprintln(w, "godedup: no structural duplicates found")
 		return
 	}
 
@@ -344,7 +344,7 @@ func PrintTable(w io.Writer, clones []Clone, cwd string) {
 	}
 
 	// header
-	wrapx.Fprintln(w, fmtRow(headers))
+	fmtx.Fprintln(w, fmtRow(headers))
 
 	// separator using only dashes
 	sep := ""
@@ -352,15 +352,15 @@ func PrintTable(w io.Writer, clones []Clone, cwd string) {
 	for i := 0; i < total; i++ {
 		sep += "-"
 	}
-	wrapx.Fprintln(w, sep)
+	fmtx.Fprintln(w, sep)
 
 	// rows: emit the separator between groups
 	prevGroup := ""
 	for _, r := range rows {
 		if prevGroup != "" && r.group != prevGroup {
-			wrapx.Fprintln(w, sep)
+			fmtx.Fprintln(w, sep)
 		}
-		wrapx.Fprintln(w, fmtRow(r))
+		fmtx.Fprintln(w, fmtRow(r))
 		prevGroup = r.group
 	}
 }
