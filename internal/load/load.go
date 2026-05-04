@@ -8,19 +8,25 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hashmap-kz/godedup/internal/cmd"
+
 	"github.com/hashmap-kz/godedup/internal/hash"
 )
 
 // Result holds all analyzed functions from the given paths.
 type Result struct {
 	Funcs []hash.FuncInfo
-	Fset  *token.FileSet
 }
+
+// TODO: later this may be done parallel in three steps:
+// 1. Collect files
+// 2. Parse them concurrently into []funcs
+// 3. Join and sort results
 
 // Load parses all Go files under the given paths and returns
 // a FuncInfo for every function declaration found.
 // Paths may be files or directories (walked recursively).
-func Load(paths []string, excludeTests bool) (*Result, error) {
+func Load(paths []string, inp *cmd.LoadInput) (*Result, error) {
 	fset := token.NewFileSet()
 	hasher := hash.New(fset)
 	var funcs []hash.FuncInfo
@@ -32,20 +38,20 @@ func Load(paths []string, excludeTests bool) (*Result, error) {
 		}
 
 		if info.IsDir() {
-			if err := walkDir(path, fset, hasher, excludeTests, &funcs); err != nil {
+			if err := walkDir(path, fset, hasher, inp, &funcs); err != nil {
 				return nil, err
 			}
 		} else {
-			if err := parseFile(path, fset, hasher, excludeTests, &funcs); err != nil {
+			if err := parseFile(path, fset, hasher, inp, &funcs); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return &Result{Funcs: funcs, Fset: fset}, nil
+	return &Result{Funcs: funcs}, nil
 }
 
-func walkDir(root string, fset *token.FileSet, hasher *hash.Hasher, excludeTests bool, out *[]hash.FuncInfo) error {
+func walkDir(root string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.LoadInput, out *[]hash.FuncInfo) error {
 	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -61,12 +67,15 @@ func walkDir(root string, fset *token.FileSet, hasher *hash.Hasher, excludeTests
 		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		return parseFile(path, fset, hasher, excludeTests, out)
+		if inp.Matches(path) {
+			return nil
+		}
+		return parseFile(path, fset, hasher, inp, out)
 	})
 }
 
-func parseFile(path string, fset *token.FileSet, hasher *hash.Hasher, excludeTests bool, out *[]hash.FuncInfo) error {
-	if excludeTests && strings.HasSuffix(path, "_test.go") {
+func parseFile(path string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.LoadInput, out *[]hash.FuncInfo) error {
+	if inp.Matches(path) {
 		return nil
 	}
 

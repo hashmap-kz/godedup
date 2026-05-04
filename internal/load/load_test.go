@@ -3,8 +3,21 @@ package load
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
+
+	"github.com/hashmap-kz/godedup/internal/cmd"
 )
+
+func emptyLoadInput() *cmd.LoadInput {
+	return &cmd.LoadInput{}
+}
+
+func excludeTestsLoadInput() *cmd.LoadInput {
+	return &cmd.LoadInput{
+		ExcludePatterns: []*regexp.Regexp{regexp.MustCompile(`_test\.go$`)},
+	}
+}
 
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
@@ -31,15 +44,12 @@ func Two() int {
 	return a + b
 }`)
 
-	result, err := Load([]string{dir}, false)
+	result, err := Load([]string{dir}, emptyLoadInput())
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
 	if len(result.Funcs) != 2 {
 		t.Fatalf("len(Funcs) = %d, want 2", len(result.Funcs))
-	}
-	if result.Fset == nil {
-		t.Fatal("Fset is nil")
 	}
 }
 
@@ -58,7 +68,7 @@ func TestOne() int {
 	return a + b
 }`)
 
-	result, err := Load([]string{dir}, true)
+	result, err := Load([]string{dir}, excludeTestsLoadInput())
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -85,7 +95,7 @@ func TestOne() int {
 	return a + b
 }`)
 
-	result, err := Load([]string{dir}, false)
+	result, err := Load([]string{dir}, emptyLoadInput())
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -109,7 +119,7 @@ func Good() int {
 	return a + b
 }`)
 
-	result, err := Load([]string{dir}, false)
+	result, err := Load([]string{dir}, emptyLoadInput())
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -142,7 +152,7 @@ func Vendored() int {
 	return a + b
 }`)
 
-	result, err := Load([]string{dir}, false)
+	result, err := Load([]string{dir}, emptyLoadInput())
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -164,7 +174,7 @@ func Single() int {
 	return a + b
 }`)
 
-	result, err := Load([]string{file}, false)
+	result, err := Load([]string{file}, emptyLoadInput())
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}

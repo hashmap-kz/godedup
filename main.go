@@ -4,11 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 
-	"github.com/hashmap-kz/godedup/internal/x/fmtx"
-
+	"github.com/hashmap-kz/godedup/internal/cmd"
 	"github.com/hashmap-kz/godedup/internal/load"
 	"github.com/hashmap-kz/godedup/internal/report"
+	"github.com/hashmap-kz/godedup/internal/x/fmtx"
 )
 
 var Version = "dev"
@@ -24,9 +25,10 @@ Usage:
 
 Examples:
   godedup ./...
-  godedup --min-similarity 0.90 ./pkg/...
   godedup --exact ./...
-  godedup --output table --no-tests ./...
+  godedup --exclude '_test\.go$' --exclude '\.pb\.go$' ./...
+  godedup --exclude '(_test|[.]pb|[.]deepcopy)[.]go$' ./...
+  godedup --output table ./...
   godedup --output json ./... | jq .
 
 Flags:
@@ -36,7 +38,15 @@ func main() {
 	minSim := flag.Float64("min-similarity", 0.85, "minimum similarity threshold (0.0-1.0)")
 	minStmts := flag.Int("min-stmts", 3, "minimum statements in a function to analyze")
 	exactOnly := flag.Bool("exact", false, "report only exact structural clones")
-	noTests := flag.Bool("no-tests", false, "exclude test files")
+	var excludePatterns []*regexp.Regexp
+	flag.Func("exclude", "exclude files matching `regexp` (may be repeated)", func(s string) error {
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return err
+		}
+		excludePatterns = append(excludePatterns, re)
+		return nil
+	})
 	output := flag.String("output", "text", "output format: text, table, json")
 	showVer := flag.Bool("version", false, "print version and exit")
 
@@ -67,7 +77,9 @@ func main() {
 
 	paths = expandPaths(paths)
 
-	result, err := load.Load(paths, *noTests)
+	result, err := load.Load(paths, &cmd.LoadInput{
+		ExcludePatterns: excludePatterns,
+	})
 	if err != nil {
 		fmtx.Fprintf(os.Stderr, "godedup: load error: %v\n", err)
 		os.Exit(1)
@@ -88,7 +100,7 @@ func main() {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("cannot get cwd: %v", err)
+		fmt.Fprintf(os.Stderr, "godedup: cannot get cwd: %v\n", err)
 		os.Exit(2)
 	}
 
@@ -99,10 +111,6 @@ func main() {
 		report.PrintTable(os.Stdout, clones, cwd)
 	default:
 		report.Print(os.Stdout, clones, cwd)
-	}
-
-	if len(clones) > 0 {
-		os.Exit(1)
 	}
 }
 
