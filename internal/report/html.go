@@ -2,7 +2,7 @@ package report
 
 import (
 	"fmt"
-	"html"
+	"html/template"
 	"io"
 	"sort"
 	"strings"
@@ -11,12 +11,43 @@ import (
 	"github.com/hashmap-kz/godedup/internal/x/fmtx"
 )
 
-// PrintHTML writes a self-contained HTML report.
-func PrintHTML(w io.Writer, clones []Clone, cwd string) {
-	exact, near, fnCount := cloneStats(clones)
+// htmlLine is one source line within a function card.
+type htmlLine struct {
+	No      int
+	FileURL template.URL
+	Text    string
+}
 
-	fmtx.Fprint(w, "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>godedup report</title>\n<style>\n")
-	fmtx.Fprint(w, `*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+// htmlFuncView is the template data for a single function card.
+type htmlFuncView struct {
+	Name     string
+	Location string
+	FileURL  template.URL
+	NumStmts int
+	NumLines int
+	Lines    []htmlLine
+}
+
+// htmlGroupView is the template data for one clone group.
+type htmlGroupView struct {
+	No        int
+	KindClass string // "exact" or "near"
+	Kind      string // "EXACT" or "NEAR"
+	Sim       string
+	IsTwoFunc bool
+	Funcs     []htmlFuncView
+}
+
+// htmlReportView is the top-level template data.
+type htmlReportView struct {
+	Groups  []htmlGroupView
+	Total   int
+	Exact   int
+	Near    int
+	FnCount int
+}
+
+const htmlCSS = `*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --bg:     #f6f8fa;
   --card:   #ffffff;
@@ -92,9 +123,7 @@ a:hover { text-decoration: underline; }
 .group-num  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .group-sim  { font-family: var(--mono); font-size: 12px; }
 .group-meta { margin-left: auto; font-size: 12px; color: var(--muted); }
-.fn-row-wrap {
-  overflow-x: auto;
-}
+.fn-row-wrap { overflow-x: auto; }
 .fn-row {
   display: flex;
   align-items: stretch;
@@ -142,32 +171,91 @@ pre {
   flex-shrink: 0;
 }
 .code-text { padding-right: 16px; }
-.empty-msg { padding: 32px; text-align: center; color: var(--muted); }
-`)
-	fmtx.Fprint(w, "</style>\n</head>\n<body>\n")
+.empty-msg { padding: 32px; text-align: center; color: var(--muted); }`
 
-	fmtx.Fprintf(w, `<div class="hdr">
-  <div><div class="hdr-title">godedup report</div><div class="hdr-sub">Structural duplicate detection for Go</div></div>
+const htmlTmpl = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>godedup report</title>
+<style>{{.CSS}}</style>
+</head>
+<body>
+<div class="hdr">
+  <div>
+    <div class="hdr-title">godedup report</div>
+    <div class="hdr-sub">Structural duplicate detection for Go</div>
+  </div>
   <div class="tags">
-    <span class="tag">%d groups</span>
-    <span class="tag">%d functions</span>
-    <span class="tag tag-e">%d exact</span>
-    <span class="tag tag-n">%d near</span>
+    <span class="tag">{{.Data.Total}} groups</span>
+    <span class="tag">{{.Data.FnCount}} functions</span>
+    <span class="tag tag-e">{{.Data.Exact}} exact</span>
+    <span class="tag tag-n">{{.Data.Near}} near</span>
   </div>
 </div>
-`, len(clones), fnCount, exact, near)
+{{- if not .Data.Groups}}
+<div class="empty-msg">No structural duplicates found.</div>
+{{- else}}
+{{- range .Data.Groups}}
+<article class="group {{.KindClass}}{{if .IsTwoFunc}} funcs-2{{end}}">
+  <div class="group-hdr">
+    <span class="group-num">#{{.No}}</span>
+    <span class="badge {{.KindClass}}">{{.Kind}}</span>
+    <span class="group-sim">{{.Sim}}</span>
+    <span class="group-meta">{{len .Funcs}} functions</span>
+  </div>
+  <div class="fn-row-wrap"><div class="fn-row">
+    {{- range .Funcs}}
+    <section class="fn-card">
+      <div class="fn-card-hdr">
+        <div class="fn-name">{{.Name}}</div>
+        <div class="fn-loc"><a href="{{.FileURL}}">{{.Location}}</a></div>
+        <div class="fn-stat">{{.NumStmts}} stmts &middot; {{.NumLines}} lines</div>
+      </div>
+      <div class="code"><pre>{{- range .Lines}}<div class="code-line"><a class="line-no" href="{{.FileURL}}">{{.No}}</a><span class="code-text">{{.Text}}</span></div>{{end}}</pre></div>
+    </section>
+    {{- end}}
+  </div></div>
+</article>
+{{- end}}
+{{- end}}
+</body>
+</html>`
 
-	if len(clones) == 0 {
-		fmtx.Fprint(w, "<div class=\"empty-msg\">No structural duplicates found.</div>\n")
-		fmtx.Fprint(w, "</body>\n</html>\n")
-		return
+var htmlReport = template.Must(
+	template.New("report").
+		Funcs(template.FuncMap{
+			"not": func(groups []htmlGroupView) bool { return len(groups) == 0 },
+		}).
+		Parse(htmlTmpl),
+)
+
+// PrintHTML writes a self-contained HTML report.
+func PrintHTML(w io.Writer, clones []Clone, cwd string) {
+	exact, near, fnCount := cloneStats(clones)
+
+	data := htmlReportView{
+		Total:   len(clones),
+		Exact:   exact,
+		Near:    near,
+		FnCount: fnCount,
+		Groups:  make([]htmlGroupView, 0, len(clones)),
 	}
-
 	for i, clone := range clones {
-		writeHTMLCloneGroup(w, i+1, clone, cwd)
+		data.Groups = append(data.Groups, buildHTMLGroup(i+1, clone, cwd))
 	}
 
-	fmtx.Fprint(w, "</body>\n</html>\n")
+	err := htmlReport.Execute(w, struct {
+		CSS  template.CSS
+		Data htmlReportView
+	}{
+		CSS:  htmlCSS,
+		Data: data,
+	})
+	if err != nil {
+		fmtx.Fprintf(w, "<!-- template error: %v -->\n", err)
+	}
 }
 
 func cloneStats(clones []Clone) (exact int, near int, funcs int) {
@@ -182,7 +270,7 @@ func cloneStats(clones []Clone) (exact int, near int, funcs int) {
 	return exact, near, funcs
 }
 
-func writeHTMLCloneGroup(w io.Writer, groupNo int, clone Clone, cwd string) {
+func buildHTMLGroup(no int, clone Clone, cwd string) htmlGroupView {
 	kind := "EXACT"
 	sim := "100%"
 	kindClass := "exact"
@@ -191,51 +279,45 @@ func writeHTMLCloneGroup(w io.Writer, groupNo int, clone Clone, cwd string) {
 		sim = fmt.Sprintf("%.0f%%", clone.Similarity*100)
 		kindClass = "near"
 	}
-
 	sorted := sortedFuncs(clone.Funcs)
-	groupClass := "group " + kindClass
-	if len(sorted) == 2 {
-		groupClass += " funcs-2"
-	}
-
-	fmtx.Fprintf(w, "<article class=\"%s\">\n", groupClass)
-	fmtx.Fprintf(w, "  <div class=\"group-hdr\">\n")
-	fmtx.Fprintf(w, "    <span class=\"group-num\">#%d</span>\n", groupNo)
-	fmtx.Fprintf(w, "    <span class=\"badge %s\">%s</span>\n", kindClass, kind)
-	fmtx.Fprintf(w, "    <span class=\"group-sim\">%s</span>\n", sim)
-	fmtx.Fprintf(w, "    <span class=\"group-meta\">%d functions</span>\n", len(sorted))
-	fmtx.Fprint(w, "  </div>\n")
-	fmtx.Fprint(w, "  <div class=\"fn-row-wrap\"><div class=\"fn-row\">\n")
-
+	funcs := make([]htmlFuncView, 0, len(sorted))
 	for _, f := range sorted {
-		writeHTMLFunctionCard(w, f, cwd)
+		funcs = append(funcs, buildHTMLFunc(f, cwd))
 	}
-
-	fmtx.Fprint(w, "  </div></div>\n</article>\n")
+	return htmlGroupView{
+		No:        no,
+		KindClass: kindClass,
+		Kind:      kind,
+		Sim:       sim,
+		IsTwoFunc: len(sorted) == 2,
+		Funcs:     funcs,
+	}
 }
 
-func writeHTMLFunctionCard(w io.Writer, f hash.FuncInfo, cwd string) {
+func buildHTMLFunc(f hash.FuncInfo, cwd string) htmlFuncView {
 	loc := fmt.Sprintf("%s:%d", relativePath(f.File, cwd), f.Line)
-	fmtx.Fprint(w, "    <section class=\"fn-card\">\n")
-	fmtx.Fprintf(w, "      <div class=\"fn-card-hdr\">\n")
-	fmtx.Fprintf(w, "        <div class=\"fn-name\">%s</div>\n", html.EscapeString(f.Name))
-	fmtx.Fprintf(w, "        <div class=\"fn-loc\"><a href=\"%s\">%s</a></div>\n",
-		html.EscapeString(fileURL(f.File, f.Line)), html.EscapeString(loc))
-	fmtx.Fprintf(w, "        <div class=\"fn-stat\">%d stmts &middot; %d lines</div>\n", f.NumStmts, f.NumLines)
-	fmtx.Fprint(w, "      </div>\n")
-	fmtx.Fprint(w, "      <div class=\"code\"><pre>")
-
-	lines := strings.Split(f.Source, "\n")
-	if f.Source == "" {
-		lines = []string{"(source unavailable)"}
+	src := f.Source
+	if src == "" {
+		src = "(source unavailable)"
 	}
-	for i, line := range lines {
+	rawLines := strings.Split(src, "\n")
+	lines := make([]htmlLine, 0, len(rawLines))
+	for i, text := range rawLines {
 		lineNo := f.Line + i
-		fmtx.Fprintf(w, "<div class=\"code-line\"><a class=\"line-no\" href=\"%s\">%d</a><span class=\"code-text\">%s</span></div>",
-			html.EscapeString(fileURL(f.File, lineNo)), lineNo, html.EscapeString(line))
+		lines = append(lines, htmlLine{
+			No:      lineNo,
+			FileURL: template.URL(fileURL(f.File, lineNo)),
+			Text:    text,
+		})
 	}
-
-	fmtx.Fprint(w, "</pre></div>\n    </section>\n")
+	return htmlFuncView{
+		Name:     f.Name,
+		Location: loc,
+		FileURL:  template.URL(fileURL(f.File, f.Line)),
+		NumStmts: f.NumStmts,
+		NumLines: f.NumLines,
+		Lines:    lines,
+	}
 }
 
 func fileURL(path string, line int) string {
