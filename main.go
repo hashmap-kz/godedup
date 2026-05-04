@@ -4,11 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 
-	"github.com/hashmap-kz/godedup/internal/x/fmtx"
-
+	"github.com/hashmap-kz/godedup/internal/cmd"
 	"github.com/hashmap-kz/godedup/internal/load"
 	"github.com/hashmap-kz/godedup/internal/report"
+	"github.com/hashmap-kz/godedup/internal/x/fmtx"
 )
 
 var Version = "dev"
@@ -24,9 +25,11 @@ Usage:
 
 Examples:
   godedup ./...
-  godedup --min-similarity 0.90 ./pkg/...
   godedup --exact ./...
-  godedup --output table --no-tests ./...
+  godedup --exclude '_test\.go$' ./...
+  godedup --exclude '_test\.go$|\.pb\.go$|\.deepcopy\.go$' ./...
+  godedup --exclude '(_test|[.]pb|[.]deepcopy)[.]go$' ./...
+  godedup --output table ./...
   godedup --output json ./... | jq .
 
 Flags:
@@ -36,7 +39,7 @@ func main() {
 	minSim := flag.Float64("min-similarity", 0.85, "minimum similarity threshold (0.0-1.0)")
 	minStmts := flag.Int("min-stmts", 3, "minimum statements in a function to analyze")
 	exactOnly := flag.Bool("exact", false, "report only exact structural clones")
-	noTests := flag.Bool("no-tests", false, "exclude test files")
+	excludePat := flag.String("exclude", "", "exclude files matching this regular expression (matched against full path)")
 	output := flag.String("output", "text", "output format: text, table, json")
 	showVer := flag.Bool("version", false, "print version and exit")
 
@@ -60,6 +63,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	var exclude *regexp.Regexp
+	if *excludePat != "" {
+		var err error
+		exclude, err = regexp.Compile(*excludePat)
+		if err != nil {
+			fmtx.Fprintf(os.Stderr, "godedup: invalid --exclude pattern: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -67,7 +80,9 @@ func main() {
 
 	paths = expandPaths(paths)
 
-	result, err := load.Load(paths, *noTests)
+	result, err := load.Load(paths, &cmd.LoadInput{
+		ExcludeRegex: exclude,
+	})
 	if err != nil {
 		fmtx.Fprintf(os.Stderr, "godedup: load error: %v\n", err)
 		os.Exit(1)
@@ -88,7 +103,7 @@ func main() {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("cannot get cwd: %v", err)
+		fmt.Fprintf(os.Stderr, "godedup: cannot get cwd: %v\n", err)
 		os.Exit(2)
 	}
 

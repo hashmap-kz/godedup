@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="godedup" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="godedup" />
+    <working_directory value="$PROJECT_DIR$" />
+    <parameters value="--exclude '(_test|[.]pb|[.]deepcopy)[.]go$'" />
+    <kind value="FILE" />
+    <package value="github.com/hashmap-kz/godedup" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
