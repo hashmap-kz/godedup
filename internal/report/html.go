@@ -92,26 +92,27 @@ a:hover { text-decoration: underline; }
 .group-num  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .group-sim  { font-family: var(--mono); font-size: 12px; }
 .group-meta { margin-left: auto; font-size: 12px; color: var(--muted); }
-.fn-row-wrap { overflow-x: auto; }
+.fn-row-wrap {
+  overflow-x: auto;
+}
 .fn-row {
   display: flex;
-  min-width: 100%;
-  width: max-content;
   align-items: stretch;
+  width: max-content;
+  min-width: 100%;
 }
-.group.funcs-2 .fn-row-wrap { overflow-x: visible; }
 .group.funcs-2 .fn-row {
-  width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
 }
 .fn-card {
-  min-width: 320px;
+  min-width: 360px;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
 }
+.group.funcs-2 .fn-card { min-width: 0; }
 .fn-card:last-child { border-right: none; }
 .fn-card-hdr {
   padding: 7px 12px;
@@ -122,14 +123,13 @@ a:hover { text-decoration: underline; }
 .fn-name { font-weight: 600; font-size: 13px; word-break: break-all; }
 .fn-loc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .fn-stat { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.code    { overflow-x: auto; flex: 1; }
+.code { flex: 1; }
 pre {
   font-family: var(--mono);
   font-size: 12px;
   line-height: 1.5;
   padding: 8px 0;
   white-space: pre;
-  min-width: max-content;
 }
 .code-line { display: flex; }
 .code-line:hover { background: rgba(0,0,0,.04); }
@@ -170,7 +170,7 @@ pre {
 	fmtx.Fprint(w, "</body>\n</html>\n")
 }
 
-func cloneStats(clones []Clone) (exact, near, funcs int) {
+func cloneStats(clones []Clone) (exact int, near int, funcs int) {
 	for _, c := range clones {
 		funcs += len(c.Funcs)
 		if c.Exact {
