@@ -67,7 +67,7 @@ func walkDir(root string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.Loa
 		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		if inp.ExcludeRegex != nil && inp.ExcludeRegex.MatchString(path) {
+		if inp.Matches(path) {
 			return nil
 		}
 		return parseFile(path, fset, hasher, inp, out)
@@ -75,7 +75,7 @@ func walkDir(root string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.Loa
 }
 
 func parseFile(path string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.LoadInput, out *[]hash.FuncInfo) error {
-	if inp.ExcludeRegex != nil && inp.ExcludeRegex.MatchString(path) {
+	if inp.Matches(path) {
 		return nil
 	}
 

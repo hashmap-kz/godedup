@@ -15,7 +15,7 @@ func emptyLoadInput() *cmd.LoadInput {
 
 func excludeTestsLoadInput() *cmd.LoadInput {
 	return &cmd.LoadInput{
-		ExcludeRegex: regexp.MustCompile(`_test\.go$`),
+		ExcludePatterns: []*regexp.Regexp{regexp.MustCompile(`_test\.go$`)},
 	}
 }
 

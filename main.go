@@ -27,7 +27,7 @@ Examples:
   godedup ./...
   godedup --exact ./...
   godedup --exclude '_test\.go$' ./...
-  godedup --exclude '_test\.go$|\.pb\.go$|\.deepcopy\.go$' ./...
+  godedup --exclude '_test\.go$' --exclude '\.pb\.go$' ./...
   godedup --exclude '(_test|[.]pb|[.]deepcopy)[.]go$' ./...
   godedup --output table ./...
   godedup --output json ./... | jq .
@@ -39,7 +39,15 @@ func main() {
 	minSim := flag.Float64("min-similarity", 0.85, "minimum similarity threshold (0.0-1.0)")
 	minStmts := flag.Int("min-stmts", 3, "minimum statements in a function to analyze")
 	exactOnly := flag.Bool("exact", false, "report only exact structural clones")
-	excludePat := flag.String("exclude", "", "exclude files matching this regular expression (matched against full path)")
+	var excludePatterns []*regexp.Regexp
+	flag.Func("exclude", "exclude files matching `regexp` (may be repeated)", func(s string) error {
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return err
+		}
+		excludePatterns = append(excludePatterns, re)
+		return nil
+	})
 	output := flag.String("output", "text", "output format: text, table, json")
 	showVer := flag.Bool("version", false, "print version and exit")
 
@@ -63,16 +71,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var exclude *regexp.Regexp
-	if *excludePat != "" {
-		var err error
-		exclude, err = regexp.Compile(*excludePat)
-		if err != nil {
-			fmtx.Fprintf(os.Stderr, "godedup: invalid --exclude pattern: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
 	paths := flag.Args()
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -81,7 +79,7 @@ func main() {
 	paths = expandPaths(paths)
 
 	result, err := load.Load(paths, &cmd.LoadInput{
-		ExcludeRegex: exclude,
+		ExcludePatterns: excludePatterns,
 	})
 	if err != nil {
 		fmtx.Fprintf(os.Stderr, "godedup: load error: %v\n", err)
