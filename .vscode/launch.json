@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "godedup",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/main.go",
+      "buildFlags": "-tags=debug",
+      "args": [
+        "--output",
+        "table"
+      ],
+      "env": {
+      }
+    }
+  ]
+}
