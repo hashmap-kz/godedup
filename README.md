@@ -57,9 +57,13 @@ calls hash identically.
 
 ## Install
 
+#### Package
+
 ```bash
 go install github.com/hashmap-kz/godedup@latest
 ```
+
+#### Brew
 
 ```bash
 brew tap hashmap-kz/homebrew-tap
@@ -88,13 +92,6 @@ Flags:
   --exclude                  exclude files matching regexp (may be repeated)
   --output          string   output format: text, table, json (default: text)
   --version                  print version
-```
-
-**CI integration** - exits with code 1 if any clones found:
-
-```yaml
-- name: Check for duplicate code
-  run: godedup --exact ./...
 ```
 
 **JSON output** for custom tooling:
