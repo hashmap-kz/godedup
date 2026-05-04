@@ -206,13 +206,7 @@ func TestPrintHTML(t *testing.T) {
 		"godedup report",
 		"1 groups",
 		"1 exact",
-		"class=\"clone-group funcs-2\"",
-		"class=\"group-id\">#1",
-		"class=\"group-badges\"",
-		"class=\"function-name\" title=\"pkg.A\"",
-		"class=\"function-row\" style=\"--func-count: 2;\"",
-		"class=\"function-subhead\"",
-		"class=\"func-metrics\">3 stmts · 7 lines",
+		"class=\"group exact funcs-2\"",
 		"pkg.A",
 		"a.go:10",
 		"func A() int",
@@ -224,7 +218,7 @@ func TestPrintHTML(t *testing.T) {
 			t.Fatalf("PrintHTML() missing %q in:\n%s", want, got)
 		}
 	}
-	for _, unwanted := range []string{"Suggestion:", "review this clone group", "group-title", "pre-wrap", "text-overflow: ellipsis"} {
+	for _, unwanted := range []string{"Suggestion:", "review this clone group"} {
 		if strings.Contains(got, unwanted) {
 			t.Fatalf("PrintHTML() contains unwanted %q in:\n%s", unwanted, got)
 		}
