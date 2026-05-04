@@ -1,6 +1,7 @@
 package load
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -79,7 +80,12 @@ func parseFile(path string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.L
 		return nil
 	}
 
-	f, err := parser.ParseFile(fset, path, nil, 0)
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	f, err := parser.ParseFile(fset, path, src, 0)
 	if err != nil {
 		// skip unparseable files
 		return nil
@@ -99,6 +105,7 @@ func parseFile(path string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.L
 		}
 
 		info := hasher.HashFunc(pkg, path, fn)
+		info.Source = sourceSpan(src, fset, fn)
 		if info.Name == "" {
 			continue
 		}
@@ -106,4 +113,13 @@ func parseFile(path string, fset *token.FileSet, hasher *hash.Hasher, inp *cmd.L
 	}
 
 	return nil
+}
+
+func sourceSpan(src []byte, fset *token.FileSet, fn *ast.FuncDecl) string {
+	start := fset.Position(fn.Pos()).Offset
+	end := fset.Position(fn.End()).Offset
+	if start < 0 || end < start || end > len(src) {
+		return ""
+	}
+	return string(bytes.TrimRight(src[start:end], "\n"))
 }

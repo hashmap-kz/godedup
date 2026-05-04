@@ -2,6 +2,7 @@ package report
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"sort"
 	"strings"
@@ -221,9 +222,296 @@ func Print(w io.Writer, clones []Clone, cwd string) {
 		}
 		fmtx.Fprintln(w)
 	}
+}
 
-	fmtx.Fprintf(w, "suggestion: extract shared logic into a common function\n")
-	fmtx.Fprintf(w, "            or use generics if types differ\n")
+// PrintHTML writes a self-contained HTML report.
+func PrintHTML(w io.Writer, clones []Clone, cwd string) {
+	exact, near, funcs := cloneStats(clones)
+
+	fmtx.Fprint(w, `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>godedup report</title>
+<style>
+:root {
+  --bg: #f6f8fa;
+  --card: #ffffff;
+  --border: #d0d7de;
+  --text: #24292f;
+  --muted: #57606a;
+  --blue: #0969da;
+  --green: #1a7f37;
+  --purple: #8250df;
+}
+* { box-sizing: border-box; }
+html { overflow-x: auto; }
+body {
+  margin: 0;
+  min-width: 960px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.page {
+  width: 100%;
+  max-width: none;
+  padding: 24px;
+}
+.header, .clone-group {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.header {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+  line-height: 1.2;
+}
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.stat, .badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f6f8fa;
+  padding: 6px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.badge.exact { color: var(--blue); }
+.badge.near { color: var(--purple); }
+.clone-group {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.group-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+}
+.group-meta {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.function-row {
+  gap: 14px;
+  align-items: stretch;
+  overflow: visible;
+}
+.clone-group.funcs-2 .function-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.clone-group.funcs-many .function-row {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+}
+.clone-group.funcs-many .function-card {
+  width: clamp(420px, 32vw, 680px);
+  flex: 0 0 auto;
+}
+.function-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.function-card-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #f6f8fa;
+}
+.function-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.location {
+  margin-top: 3px;
+  font-size: 12px;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.code {
+  padding: 10px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.code-line {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+}
+.line-no {
+  color: #6e7781;
+  text-align: right;
+  padding-right: 12px;
+  user-select: none;
+}
+.code-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-right: 12px;
+}
+.empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+}
+@media (max-width: 1100px) {
+  .clone-group.funcs-2 .function-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+<main class="page">
+`)
+
+	fmtx.Fprintf(w, `<section class="header">
+  <div class="title-row">
+    <div>
+      <h1>godedup report</h1>
+      <p class="subtitle">Structural duplicate detection for Go</p>
+    </div>
+    <div class="stats">
+      <span class="stat">%d groups</span>
+      <span class="stat">%d exact</span>
+      <span class="stat">%d near</span>
+      <span class="stat">%d functions</span>
+    </div>
+  </div>
+</section>
+`, len(clones), exact, near, funcs)
+
+	if len(clones) == 0 {
+		fmtx.Fprint(w, `<section class="header empty">No structural duplicates found.</section>`)
+		fmtx.Fprint(w, "\n</main>\n</body>\n</html>\n")
+		return
+	}
+
+	for i, clone := range clones {
+		writeHTMLCloneGroup(w, i+1, clone, cwd)
+	}
+
+	fmtx.Fprint(w, "</main>\n</body>\n</html>\n")
+}
+
+func cloneStats(clones []Clone) (exact int, near int, funcs int) {
+	for _, c := range clones {
+		funcs += len(c.Funcs)
+		if c.Exact {
+			exact++
+		} else {
+			near++
+		}
+	}
+	return exact, near, funcs
+}
+
+func writeHTMLCloneGroup(w io.Writer, groupNo int, clone Clone, cwd string) {
+	kind := "EXACT"
+	sim := "100%"
+	kindClass := "exact"
+	if !clone.Exact {
+		kind = "NEAR"
+		sim = fmt.Sprintf("%.0f%%", clone.Similarity*100)
+		kindClass = "near"
+	}
+
+	sorted := sortedFuncs(clone.Funcs)
+	className := "funcs-many"
+	if len(sorted) == 2 {
+		className = "funcs-2"
+	}
+
+	fmtx.Fprintf(w, `<article class="clone-group %s">
+  <header class="group-header">
+    <div class="group-title">
+      <span>#%d</span>
+      <span class="badge %s">%s</span>
+      <span class="badge">%s</span>
+    </div>
+    <div class="group-meta">%d functions</div>
+  </header>
+  <div class="function-row">
+`, className, groupNo, kindClass, kind, sim, len(sorted))
+
+	for _, f := range sorted {
+		writeHTMLFunctionCard(w, f, cwd)
+	}
+
+	fmtx.Fprint(w, "  </div>\n</article>\n")
+}
+
+func writeHTMLFunctionCard(w io.Writer, f hash.FuncInfo, cwd string) {
+	loc := fmt.Sprintf("%s:%d", relativePath(f.File, cwd), f.Line)
+	fmtx.Fprintf(w, `    <section class="function-card">
+      <header class="function-card-header">
+        <div class="function-name">%s</div>
+        <div class="location"><a href="%s">%s</a> · %d stmts · %d lines</div>
+      </header>
+      <div class="code">
+`, html.EscapeString(f.Name), html.EscapeString(fileURL(f.File, f.Line)), html.EscapeString(loc), f.NumStmts, f.NumLines)
+
+	lines := strings.Split(f.Source, "\n")
+	if f.Source == "" {
+		lines = []string{"source unavailable"}
+	}
+	for i, line := range lines {
+		lineNo := f.Line + i
+		fmtx.Fprintf(w, `        <div class="code-line"><a class="line-no" href="%s">%d</a><code class="code-text">%s</code></div>
+`, html.EscapeString(fileURL(f.File, lineNo)), lineNo, html.EscapeString(line))
+	}
+
+	fmtx.Fprint(w, "      </div>\n    </section>\n")
+}
+
+func fileURL(path string, line int) string {
+	return fmt.Sprintf("file://%s:%d", path, line)
+}
+
+func sortedFuncs(funcs []hash.FuncInfo) []hash.FuncInfo {
+	sorted := make([]hash.FuncInfo, len(funcs))
+	copy(sorted, funcs)
+	sort.Slice(sorted, func(a, b int) bool {
+		if sorted[a].File != sorted[b].File {
+			return sorted[a].File < sorted[b].File
+		}
+		return sorted[a].Line < sorted[b].Line
+	})
+	return sorted
 }
 
 // PrintJSON writes machine-readable JSON output.

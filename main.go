@@ -30,6 +30,7 @@ Examples:
   godedup --exclude '(_test|[.]pb|[.]deepcopy)[.]go$' ./...
   godedup --output table ./...
   godedup --output json ./... | jq .
+  godedup --output html ./... > godedup.html
 
 Flags:
 `
@@ -47,7 +48,7 @@ func main() {
 		excludePatterns = append(excludePatterns, re)
 		return nil
 	})
-	output := flag.String("output", "text", "output format: text, table, json")
+	output := flag.String("output", "text", "output format: text, table, json, html")
 	showVer := flag.Bool("version", false, "print version and exit")
 
 	flag.Usage = func() {
@@ -63,10 +64,10 @@ func main() {
 	}
 
 	switch *output {
-	case "text", "table", "json":
+	case "text", "table", "json", "html":
 		// valid
 	default:
-		fmtx.Fprintf(os.Stderr, "godedup: unknown output format %q (want: text, table, json)\n", *output)
+		fmtx.Fprintf(os.Stderr, "godedup: unknown output format %q (want: text, table, json, html)\n", *output)
 		os.Exit(1)
 	}
 
@@ -109,6 +110,8 @@ func main() {
 		report.PrintJSON(os.Stdout, clones)
 	case "table":
 		report.PrintTable(os.Stdout, clones, cwd)
+	case "html":
+		report.PrintHTML(os.Stdout, clones, cwd)
 	default:
 		report.Print(os.Stdout, clones, cwd)
 	}

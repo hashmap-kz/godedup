@@ -142,11 +142,13 @@ func TestPrintHumanReadable(t *testing.T) {
 		"a.go:10  (3 stmts, 7 lines)",
 		"pkg.B",
 		"b.go:20  (3 stmts, 7 lines)",
-		"suggestion: extract shared logic into a common function",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("Print() missing %q in:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "suggestion:") {
+		t.Fatalf("Print() contains superfluous suggestion:\n%s", got)
 	}
 	if strings.Index(got, "pkg.A") > strings.Index(got, "pkg.B") {
 		t.Fatalf("functions are not sorted by file/line:\n%s", got)
@@ -180,6 +182,45 @@ func TestPrintTable(t *testing.T) {
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("PrintTable() missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+func TestPrintHTML(t *testing.T) {
+	clones := []Clone{{
+		Exact:      true,
+		Similarity: 1.0,
+		Funcs: []hash.FuncInfo{
+			funcInfo("pkg.B", "/repo/b.go", 20, 3, 7, 100, 1, 2, 3),
+			funcInfo("pkg.A", "/repo/a.go", 10, 3, 7, 100, 1, 2, 3),
+		},
+	}}
+	clones[0].Funcs[0].Source = "func B() int {\n\tx := 1\n\ty := 2\n\treturn x + y\n}"
+	clones[0].Funcs[1].Source = "func A() int {\n\tx := 1\n\ty := 2\n\treturn x + y\n}"
+
+	var buf bytes.Buffer
+	PrintHTML(&buf, clones, "/repo")
+	got := buf.String()
+	for _, want := range []string{
+		"<!doctype html>",
+		"godedup report",
+		"1 groups",
+		"1 exact",
+		"class=\"clone-group funcs-2\"",
+		"pkg.A",
+		"a.go:10",
+		"func A() int",
+		"pkg.B",
+		"b.go:20",
+		"file:///repo/a.go:10",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("PrintHTML() missing %q in:\n%s", want, got)
+		}
+	}
+	for _, unwanted := range []string{"Suggestion:", "review this clone group"} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("PrintHTML() contains unwanted %q in:\n%s", unwanted, got)
 		}
 	}
 }
