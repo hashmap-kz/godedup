@@ -21,6 +21,10 @@ Find structurally duplicate functions in Go code.
 godedup ./...
 ```
 
+**HTML output**
+
+![HTML](https://raw.githubusercontent.com/hashmap-kz/assets/main/godedup/godedup-html-v1.png)
+
 **Table output**
 
 ```
@@ -37,10 +41,6 @@ GROUP  TYPE   SIM   FUNCTION                     LOCATION                     ST
 3      NEAR   88%   worker.(*EmailJob).validate  internal/worker/email.go:55  7      19
 3      NEAR   88%   worker.(*SMSJob).validate    internal/worker/sms.go:48    8      21
 ```
-
-**HTML output**
-
-![HTML](https://raw.githubusercontent.com/hashmap-kz/assets/main/godedup/godedup-html-v1.png)
 
 ---
 
