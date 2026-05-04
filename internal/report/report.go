@@ -249,13 +249,14 @@ func PrintHTML(w io.Writer, clones []Clone, cwd string) {
 html { overflow-x: auto; }
 body {
   margin: 0;
-  min-width: 960px;
+  min-width: 1280px;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 .page {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   max-width: none;
   padding: 24px;
 }
@@ -289,76 +290,97 @@ h1 {
   gap: 8px;
   justify-content: flex-end;
 }
-.stat, .badge {
+.stat {
   border: 1px solid var(--border);
   border-radius: 999px;
   background: #f6f8fa;
-  padding: 6px 10px;
+  padding: 5px 9px;
   font-size: 13px;
+  white-space: nowrap;
+}
+.badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f6f8fa;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
   white-space: nowrap;
 }
 .badge.exact { color: var(--blue); }
 .badge.near { color: var(--purple); }
 .clone-group {
+  width: max-content;
+  min-width: 100%;
   padding: 16px;
   margin-bottom: 16px;
 }
 .group-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
   align-items: center;
   margin-bottom: 12px;
 }
-.group-title {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.group-id {
   font-weight: 700;
+  color: var(--muted);
+}
+.group-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
 }
 .group-meta {
   color: var(--muted);
   font-size: 13px;
   white-space: nowrap;
+  justify-self: end;
 }
 .function-row {
+  display: grid;
+  grid-template-columns: repeat(var(--func-count), minmax(640px, max-content));
   gap: 14px;
   align-items: stretch;
   overflow: visible;
 }
-.clone-group.funcs-2 .function-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.clone-group.funcs-many .function-row {
-  display: flex;
-  width: max-content;
-  min-width: 100%;
-}
-.clone-group.funcs-many .function-card {
-  width: clamp(420px, 32vw, 680px);
-  flex: 0 0 auto;
-}
 .function-card {
-  min-width: 0;
+  min-width: 640px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fff;
-  overflow: hidden;
+  overflow: visible;
 }
 .function-card-header {
-  padding: 10px 12px;
+  min-height: 64px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--border);
   background: #f6f8fa;
 }
 .function-name {
   font-weight: 700;
-  overflow-wrap: anywhere;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: visible;
+}
+.function-subhead {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+  white-space: nowrap;
 }
 .location {
-  margin-top: 3px;
+  overflow: visible;
+  white-space: nowrap;
   font-size: 12px;
+}
+.func-metrics {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -370,7 +392,7 @@ a:hover { text-decoration: underline; }
 }
 .code-line {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: 54px max-content;
 }
 .line-no {
   color: #6e7781;
@@ -379,19 +401,14 @@ a:hover { text-decoration: underline; }
   user-select: none;
 }
 .code-text {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  white-space: pre;
+  overflow-wrap: normal;
   padding-right: 12px;
 }
 .empty {
   padding: 32px;
   text-align: center;
   color: var(--muted);
-}
-@media (max-width: 1100px) {
-  .clone-group.funcs-2 .function-row {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
 </head>
@@ -458,15 +475,15 @@ func writeHTMLCloneGroup(w io.Writer, groupNo int, clone Clone, cwd string) {
 
 	fmtx.Fprintf(w, `<article class="clone-group %s">
   <header class="group-header">
-    <div class="group-title">
-      <span>#%d</span>
+    <div class="group-id">#%d</div>
+    <div class="group-badges">
       <span class="badge %s">%s</span>
       <span class="badge">%s</span>
     </div>
     <div class="group-meta">%d functions</div>
   </header>
-  <div class="function-row">
-`, className, groupNo, kindClass, kind, sim, len(sorted))
+  <div class="function-row" style="--func-count: %d;">
+`, className, groupNo, kindClass, kind, sim, len(sorted), len(sorted))
 
 	for _, f := range sorted {
 		writeHTMLFunctionCard(w, f, cwd)
@@ -477,13 +494,19 @@ func writeHTMLCloneGroup(w io.Writer, groupNo int, clone Clone, cwd string) {
 
 func writeHTMLFunctionCard(w io.Writer, f hash.FuncInfo, cwd string) {
 	loc := fmt.Sprintf("%s:%d", relativePath(f.File, cwd), f.Line)
+	escapedName := html.EscapeString(f.Name)
+	escapedLoc := html.EscapeString(loc)
+	escapedURL := html.EscapeString(fileURL(f.File, f.Line))
 	fmtx.Fprintf(w, `    <section class="function-card">
       <header class="function-card-header">
-        <div class="function-name">%s</div>
-        <div class="location"><a href="%s">%s</a> · %d stmts · %d lines</div>
+        <div class="function-name" title="%s">%s</div>
+        <div class="function-subhead">
+          <a class="location" href="%s" title="%s">%s</a>
+          <span class="func-metrics">%d stmts · %d lines</span>
+        </div>
       </header>
       <div class="code">
-`, html.EscapeString(f.Name), html.EscapeString(fileURL(f.File, f.Line)), html.EscapeString(loc), f.NumStmts, f.NumLines)
+`, escapedName, escapedName, escapedURL, escapedLoc, escapedLoc, f.NumStmts, f.NumLines)
 
 	lines := strings.Split(f.Source, "\n")
 	if f.Source == "" {
