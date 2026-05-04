@@ -258,7 +258,7 @@ func PrintHTML(w io.Writer, clones []Clone, cwd string) {
 	}
 }
 
-func cloneStats(clones []Clone) (exact int, near int, funcs int) {
+func cloneStats(clones []Clone) (exact, near, funcs int) {
 	for _, c := range clones {
 		funcs += len(c.Funcs)
 		if c.Exact {
@@ -271,11 +271,11 @@ func cloneStats(clones []Clone) (exact int, near int, funcs int) {
 }
 
 func buildHTMLGroup(no int, clone Clone, cwd string) htmlGroupView {
-	kind := "EXACT"
-	sim := "100%"
+	kind := kindExact
+	sim := sim100Percent
 	kindClass := "exact"
 	if !clone.Exact {
-		kind = "NEAR"
+		kind = kindNear
 		sim = fmt.Sprintf("%.0f%%", clone.Similarity*100)
 		kindClass = "near"
 	}
@@ -294,6 +294,7 @@ func buildHTMLGroup(no int, clone Clone, cwd string) htmlGroupView {
 	}
 }
 
+//nolint:gocritic
 func buildHTMLFunc(f hash.FuncInfo, cwd string) htmlFuncView {
 	loc := fmt.Sprintf("%s:%d", relativePath(f.File, cwd), f.Line)
 	src := f.Source
@@ -305,7 +306,8 @@ func buildHTMLFunc(f hash.FuncInfo, cwd string) htmlFuncView {
 	for i, text := range rawLines {
 		lineNo := f.Line + i
 		lines = append(lines, htmlLine{
-			No:      lineNo,
+			No: lineNo,
+			//nolint:gosec
 			FileURL: template.URL(fileURL(f.File, lineNo)),
 			Text:    text,
 		})
@@ -313,6 +315,7 @@ func buildHTMLFunc(f hash.FuncInfo, cwd string) htmlFuncView {
 	return htmlFuncView{
 		Name:     f.Name,
 		Location: loc,
+		//nolint:gosec
 		FileURL:  template.URL(fileURL(f.File, f.Line)),
 		NumStmts: f.NumStmts,
 		NumLines: f.NumLines,

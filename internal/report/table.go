@@ -30,10 +30,10 @@ func PrintTable(w io.Writer, clones []Clone, cwd string) {
 
 	var rows []row
 	for i, clone := range clones {
-		typ := "EXACT"
-		sim := "100%"
+		typ := kindExact
+		sim := sim100Percent
 		if !clone.Exact {
-			typ = "NEAR"
+			typ = kindNear
 			sim = fmt.Sprintf("%.0f%%", clone.Similarity*100)
 		}
 

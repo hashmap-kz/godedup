@@ -30,10 +30,10 @@ func Print(w io.Writer, clones []Clone, cwd string) {
 		len(clones), exact, near)
 
 	for i, clone := range clones {
-		kind := "EXACT"
-		simStr := "100%"
+		kind := kindExact
+		simStr := sim100Percent
 		if !clone.Exact {
-			kind = "NEAR"
+			kind = kindNear
 			simStr = fmt.Sprintf("%.0f%%", clone.Similarity*100)
 		}
 
