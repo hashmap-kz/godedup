@@ -22,7 +22,7 @@ godedup ./...
 ```
 
 ```
-$ godedup --output=table --no-tests
+$ godedup --output=table --exclude '_test\.go$'
  
 GROUP  TYPE   SIM   FUNCTION                     LOCATION                     STMTS  LINES
 ------------------------------------------------------------------------------------------
@@ -73,11 +73,19 @@ brew install godedup
 ```
 godedup [flags] [path ...]
 
+Examples:
+  godedup ./...
+  godedup --exact ./...
+  godedup --exclude '_test\.go$' --exclude '\.pb\.go$' ./...
+  godedup --exclude '(_test|[.]pb|[.]deepcopy)[.]go$' ./...
+  godedup --output table ./...
+  godedup --output json ./... | jq .
+
 Flags:
   --min-similarity  float    minimum similarity threshold (default: 0.85)
   --min-stmts       int      minimum statements to analyze (default: 3)
   --exact                    report only exact structural clones
-  --no-tests                 exclude test files
+  --exclude                  exclude files matching regexp (may be repeated)
   --output          string   output format: text, table, json (default: text)
   --version                  print version
 ```
