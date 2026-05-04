@@ -25,7 +25,7 @@ godedup ./...
 
 ![HTML](https://raw.githubusercontent.com/hashmap-kz/assets/main/godedup/godedup-html-v1.png)
 
-**Table output**
+**Table output with clickable `file.go:line` locations in supported terminals and editors**
 
 ```
 $ godedup --output=table --exclude '_test\.go$'
