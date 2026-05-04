@@ -21,6 +21,8 @@ Find structurally duplicate functions in Go code.
 godedup ./...
 ```
 
+**Table output**
+
 ```
 $ godedup --output=table --exclude '_test\.go$'
  
@@ -35,6 +37,10 @@ GROUP  TYPE   SIM   FUNCTION                     LOCATION                     ST
 3      NEAR   88%   worker.(*EmailJob).validate  internal/worker/email.go:55  7      19
 3      NEAR   88%   worker.(*SMSJob).validate    internal/worker/sms.go:48    8      21
 ```
+
+**HTML output**
+
+![HTML](https://raw.githubusercontent.com/hashmap-kz/assets/main/godedup/godedup-html-v1.png)
 
 ---
 
@@ -83,6 +89,7 @@ Examples:
   godedup --exclude '_test\.go$' --exclude '\.pb\.go$' ./...
   godedup --exclude '(_test|[.]pb|[.]deepcopy)[.]go$' ./...
   godedup --output table ./...
+  godedup --output html ./... > godedup.html
   godedup --output json ./... | jq .
 
 Flags:
@@ -90,7 +97,7 @@ Flags:
   --min-stmts       int      minimum statements to analyze (default: 3)
   --exact                    report only exact structural clones
   --exclude                  exclude files matching regexp (may be repeated)
-  --output          string   output format: text, table, json (default: text)
+  --output          string   output format: text, table, html, json (default: text)
   --version                  print version
 ```
 
