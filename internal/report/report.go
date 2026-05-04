@@ -1,12 +1,8 @@
 package report
 
 import (
-	"fmt"
-	"io"
 	"sort"
 	"strings"
-
-	"github.com/hashmap-kz/godedup/internal/x/fmtx"
 
 	"github.com/hashmap-kz/godedup/internal/hash"
 )
@@ -172,83 +168,6 @@ func sortClones(clones []Clone) {
 	})
 }
 
-// Print writes a human-readable report to w.
-func Print(w io.Writer, clones []Clone, cwd string) {
-	if len(clones) == 0 {
-		fmtx.Fprintln(w, "godedup: no structural duplicates found")
-		return
-	}
-
-	exact := 0
-	near := 0
-	for _, c := range clones {
-		if c.Exact {
-			exact++
-		} else {
-			near++
-		}
-	}
-
-	fmtx.Fprintf(w, "godedup: found %d clone group(s) (%d exact, %d near)\n\n",
-		len(clones), exact, near)
-
-	for i, clone := range clones {
-		kind := "EXACT"
-		simStr := "100%"
-		if !clone.Exact {
-			kind = "NEAR"
-			simStr = fmt.Sprintf("%.0f%%", clone.Similarity*100)
-		}
-
-		fmtx.Fprintf(w, "=== clone group %d [%s %s similarity] ===\n",
-			i+1, kind, simStr)
-
-		// sort functions by file+line for stable output
-		sorted := make([]hash.FuncInfo, len(clone.Funcs))
-		copy(sorted, clone.Funcs)
-		sort.Slice(sorted, func(a, b int) bool {
-			if sorted[a].File != sorted[b].File {
-				return sorted[a].File < sorted[b].File
-			}
-			return sorted[a].Line < sorted[b].Line
-		})
-
-		for _, f := range sorted {
-			relPath := relativePath(f.File, cwd)
-			fmtx.Fprintf(w, "  %s\n", f.Name)
-			fmtx.Fprintf(w, "    %s:%d  (%d stmts, %d lines)\n",
-				relPath, f.Line, f.NumStmts, f.NumLines)
-		}
-		fmtx.Fprintln(w)
-	}
-
-	fmtx.Fprintf(w, "suggestion: extract shared logic into a common function\n")
-	fmtx.Fprintf(w, "            or use generics if types differ\n")
-}
-
-// PrintJSON writes machine-readable JSON output.
-func PrintJSON(w io.Writer, clones []Clone) {
-	fmtx.Fprintln(w, "[")
-	for i, clone := range clones {
-		fmtx.Fprintf(w, `  {"exact":%v,"similarity":%.2f,"functions":[`,
-			clone.Exact, clone.Similarity)
-		for j, f := range clone.Funcs {
-			if j > 0 {
-				fmtx.Fprint(w, ",")
-			}
-			fmtx.Fprintf(w, `{"name":%q,"file":%q,"line":%d,"stmts":%d}`,
-				f.Name, f.File, f.Line, f.NumStmts)
-		}
-		fmtx.Fprint(w, "]}")
-		if i < len(clones)-1 {
-			fmtx.Fprintln(w, ",")
-		} else {
-			fmtx.Fprintln(w)
-		}
-	}
-	fmtx.Fprintln(w, "]")
-}
-
 func relativePath(path, cwd string) string {
 	if cwd == "" {
 		return path
@@ -258,109 +177,4 @@ func relativePath(path, cwd string) string {
 		return path
 	}
 	return rel
-}
-
-// PrintTable writes aligned tabular output suitable for terminal viewing.
-// Columns: GROUP  TYPE   SIM   FUNCTION  LOCATION  STMTS  LINES
-func PrintTable(w io.Writer, clones []Clone, cwd string) {
-	if len(clones) == 0 {
-		fmtx.Fprintln(w, "godedup: no structural duplicates found")
-		return
-	}
-
-	// collect all rows first so we can compute column widths
-	type row struct {
-		group    string
-		typ      string
-		sim      string
-		function string
-		location string
-		stmts    string
-		lines    string
-	}
-
-	var rows []row
-	for i, clone := range clones {
-		typ := "EXACT"
-		sim := "100%"
-		if !clone.Exact {
-			typ = "NEAR"
-			sim = fmt.Sprintf("%.0f%%", clone.Similarity*100)
-		}
-
-		sorted := make([]hash.FuncInfo, len(clone.Funcs))
-		copy(sorted, clone.Funcs)
-		sort.Slice(sorted, func(a, b int) bool {
-			if sorted[a].File != sorted[b].File {
-				return sorted[a].File < sorted[b].File
-			}
-			return sorted[a].Line < sorted[b].Line
-		})
-
-		for _, f := range sorted {
-			loc := fmt.Sprintf("%s:%d", relativePath(f.File, cwd), f.Line)
-			rows = append(rows, row{
-				group:    fmt.Sprintf("%d", i+1),
-				typ:      typ,
-				sim:      sim,
-				function: f.Name,
-				location: loc,
-				stmts:    fmt.Sprintf("%d", f.NumStmts),
-				lines:    fmt.Sprintf("%d", f.NumLines),
-			})
-		}
-	}
-
-	// compute column widths
-	headers := row{"GROUP", "TYPE", "SIM", "FUNCTION", "LOCATION", "STMTS", "LINES"}
-	widths := [7]int{
-		len(headers.group),
-		len(headers.typ),
-		len(headers.sim),
-		len(headers.function),
-		len(headers.location),
-		len(headers.stmts),
-		len(headers.lines),
-	}
-	for _, r := range rows {
-		vals := [7]string{r.group, r.typ, r.sim, r.function, r.location, r.stmts, r.lines}
-		for i, v := range vals {
-			if len(v) > widths[i] {
-				widths[i] = len(v)
-			}
-		}
-	}
-
-	fmtRow := func(r row) string {
-		return fmt.Sprintf("%-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
-			widths[0], r.group,
-			widths[1], r.typ,
-			widths[2], r.sim,
-			widths[3], r.function,
-			widths[4], r.location,
-			widths[5], r.stmts,
-			r.lines,
-		)
-	}
-
-	// header
-	fmtx.Fprintln(w, fmtRow(headers))
-
-	// separator using only dashes
-	sep := ""
-	total := widths[0] + widths[1] + widths[2] + widths[3] + widths[4] + widths[5] + widths[6] + 12
-	for i := 0; i < total; i++ {
-		sep += "-"
-	}
-	fmtx.Fprintln(w, sep)
-
-	// rows: emit the separator between groups
-	prevGroup := ""
-	for _, r := range rows {
-		if prevGroup != "" && r.group != prevGroup {
-			fmtx.Fprintln(w, sep)
-		}
-		fmtx.Fprintln(w, fmtRow(r))
-		prevGroup = r.group
-	}
 }

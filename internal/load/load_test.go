@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashmap-kz/godedup/internal/cmd"
@@ -161,6 +162,29 @@ func Vendored() int {
 	}
 	if got := result.Funcs[0].Name; got != "sample.Good" {
 		t.Fatalf("loaded function = %q, want sample.Good", got)
+	}
+}
+
+func TestLoadStoresFunctionSource(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "source.go")
+	writeFile(t, file, `package sample
+func Source() int {
+	a := 1
+	b := 2
+	return a + b
+}
+`)
+
+	result, err := Load([]string{file}, emptyLoadInput())
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(result.Funcs) != 1 {
+		t.Fatalf("len(Funcs) = %d, want 1", len(result.Funcs))
+	}
+	if got := result.Funcs[0].Source; !strings.Contains(got, "func Source() int") || !strings.Contains(got, "return a + b") {
+		t.Fatalf("Source was not captured correctly:\n%s", got)
 	}
 }
 

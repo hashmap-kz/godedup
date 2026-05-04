@@ -2,7 +2,6 @@ package report
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -119,104 +118,6 @@ func TestPrintNoClones(t *testing.T) {
 	Print(&buf, nil, "")
 	if got := strings.TrimSpace(buf.String()); got != "godedup: no structural duplicates found" {
 		t.Fatalf("Print() = %q", got)
-	}
-}
-
-func TestPrintHumanReadable(t *testing.T) {
-	clones := []Clone{{
-		Exact:      true,
-		Similarity: 1.0,
-		Funcs: []hash.FuncInfo{
-			funcInfo("pkg.B", "/repo/b.go", 20, 3, 7, 100, 1, 2, 3),
-			funcInfo("pkg.A", "/repo/a.go", 10, 3, 7, 100, 1, 2, 3),
-		},
-	}}
-
-	var buf bytes.Buffer
-	Print(&buf, clones, "/repo")
-	got := buf.String()
-	for _, want := range []string{
-		"godedup: found 1 clone group(s) (1 exact, 0 near)",
-		"=== clone group 1 [EXACT 100% similarity] ===",
-		"pkg.A",
-		"a.go:10  (3 stmts, 7 lines)",
-		"pkg.B",
-		"b.go:20  (3 stmts, 7 lines)",
-		"suggestion: extract shared logic into a common function",
-	} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("Print() missing %q in:\n%s", want, got)
-		}
-	}
-	if strings.Index(got, "pkg.A") > strings.Index(got, "pkg.B") {
-		t.Fatalf("functions are not sorted by file/line:\n%s", got)
-	}
-}
-
-func TestPrintTable(t *testing.T) {
-	clones := []Clone{{
-		Exact:      false,
-		Similarity: 0.91,
-		Funcs: []hash.FuncInfo{
-			funcInfo("api.handleOrderCreate", "/repo/pkg/api/order.go", 51, 19, 47, 200, 1, 2, 9),
-			funcInfo("api.handleUserCreate", "/repo/pkg/api/user.go", 44, 18, 45, 100, 1, 2, 3),
-		},
-	}}
-
-	var buf bytes.Buffer
-	PrintTable(&buf, clones, "/repo")
-	got := buf.String()
-	for _, want := range []string{
-		"GROUP",
-		"TYPE",
-		"SIM",
-		"FUNCTION",
-		"LOCATION",
-		"1      NEAR  91%",
-		"api.handleOrderCreate",
-		"pkg/api/order.go:51",
-		"api.handleUserCreate",
-		"pkg/api/user.go:44",
-	} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("PrintTable() missing %q in:\n%s", want, got)
-		}
-	}
-}
-
-func TestPrintJSON(t *testing.T) {
-	clones := []Clone{{
-		Exact:      true,
-		Similarity: 1.0,
-		Funcs: []hash.FuncInfo{
-			funcInfo("pkg.A", "a.go", 10, 3, 7, 100, 1, 2, 3),
-		},
-	}}
-
-	var buf bytes.Buffer
-	PrintJSON(&buf, clones)
-
-	var decoded []struct {
-		Exact      bool    `json:"exact"`
-		Similarity float64 `json:"similarity"`
-		Functions  []struct {
-			Name  string `json:"name"`
-			File  string `json:"file"`
-			Line  int    `json:"line"`
-			Stmts int    `json:"stmts"`
-		} `json:"functions"`
-	}
-	if err := json.Unmarshal(buf.Bytes(), &decoded); err != nil {
-		t.Fatalf("PrintJSON produced invalid JSON: %v\n%s", err, buf.String())
-	}
-	if len(decoded) != 1 {
-		t.Fatalf("len(decoded) = %d, want 1", len(decoded))
-	}
-	if !decoded[0].Exact || decoded[0].Similarity != 1.0 {
-		t.Fatalf("decoded clone = %+v, want exact similarity 1.0", decoded[0])
-	}
-	if got := decoded[0].Functions[0].Name; got != "pkg.A" {
-		t.Fatalf("function name = %q, want pkg.A", got)
 	}
 }
 

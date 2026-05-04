@@ -23,6 +23,7 @@ type FuncInfo struct {
 	StmtSeq  []uint64 // per-statement hashes for similarity comparison
 	NumStmts int      // total statement count (excluding blank lines)
 	NumLines int      // line span of the function body
+	Source   string   // original function source, used by rich reports
 }
 
 // Hasher computes structural hashes of AST nodes.
