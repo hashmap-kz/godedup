@@ -152,7 +152,7 @@ a:hover { text-decoration: underline; }
 .fn-name { font-weight: 600; font-size: 13px; word-break: break-all; }
 .fn-loc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .fn-stat { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.code { flex: 1; }
+.code { flex: 1; overflow-x: auto; }
 pre {
   font-family: var(--mono);
   font-size: 12px;
